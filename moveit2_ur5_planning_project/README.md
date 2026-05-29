@@ -1,23 +1,111 @@
 # 基于 ROS 2 和 MoveIt 2 的 UR5 机械臂运动规划项目
 
-这是一个独立的 ROS 2 Humble + MoveIt 2 项目，用 UR5 机械臂展示运动规划、避障规划、多目标任务、笛卡尔路径规划、可视化解释和规划结果统计分析。
+本项目是一个独立的 **ROS 2 Humble + MoveIt 2 + UR5** 机械臂运动规划仿真工作空间。它的目标不是只做一个最小 demo，而是做成一个可以展示、可以解释、可以对比、可以分析的完整机械臂规划项目。
 
-推荐在 Ubuntu 22.04 / ROS 2 Humble 环境中使用，目录建议放在：
+项目已经覆盖：
 
-```bash
-/home/guangwei/moveit2_ur5_planning_project
+- UR5 模型加载。
+- MoveIt 2 规划环境启动。
+- RViz 规划和执行显示。
+- C++ MoveGroupInterface 自动规划节点。
+- fake trajectory controller 虚拟执行。
+- 目标点、路径、障碍物 Marker 可视化。
+- 单目标、多目标、避障、笛卡尔路径四类规划。
+- 成功案例和失败案例展示。
+- CSV 结果记录和统一汇总分析。
+
+## 1. 项目定位
+
+这个项目可以用一句话概括：
+
+> 基于 ROS 2 Humble 和 MoveIt 2 搭建 UR5 六自由度机械臂运动规划仿真系统，并用 RViz 与 CSV 指标展示不同规划方法的工程差异。
+
+它适合展示以下能力：
+
+1. 能规划：调用 MoveIt 2 生成机械臂轨迹。
+2. 能执行：fake controller 接收轨迹并发布关节状态。
+3. 能显示：RViz 展示模型、轨迹、场景和 marker。
+4. 能对比：用统一 CSV 比较不同规划方法。
+5. 能解释：通过障碍物、目标点、路径提示线和失败案例说明规划原因。
+6. 能分析：用轨迹点数、规划时间、关节路径长度等指标分析结果。
+
+## 2. 项目目录
+
+```text
+moveit2_ur5_planning_project/
+├── README.md
+├── src/
+│   ├── ur5_motion_planner/
+│   │   ├── CMakeLists.txt
+│   │   ├── package.xml
+│   │   ├── include/
+│   │   │   └── ur5_motion_planner/
+│   │   │       └── planner_utils.hpp
+│   │   ├── launch/
+│   │   │   ├── demo.launch.py
+│   │   │   ├── planning_scene.launch.py
+│   │   │   ├── multi_target.launch.py
+│   │   │   ├── cartesian_path.launch.py
+│   │   │   └── ur5_launch_common.py
+│   │   ├── scripts/
+│   │   │   └── fake_trajectory_controller.py
+│   │   └── src/
+│   │       ├── move_group_demo_node.cpp
+│   │       ├── planning_scene_node.cpp
+│   │       ├── multi_target_planner_node.cpp
+│   │       └── cartesian_path_node.cpp
+│   └── ur5_analysis/
+│       ├── package.xml
+│       ├── setup.py
+│       └── ur5_analysis/
+│           ├── fk_verify.py
+│           └── plot_trajectory.py
+├── build/      # 构建后生成，Git 不上传
+├── install/    # 构建后生成，Git 不上传
+├── log/        # 构建和运行日志，Git 不上传
+└── results/    # 运行结果 CSV 和图表，Git 不上传
 ```
 
-项目不要求修改已有 `~/ros2_ws`、`.bashrc` 或系统配置。构建产物和实验数据会保存在本项目下的 `build/`、`install/`、`log/`、`results/` 中。
+## 3. 两个 ROS 包说明
 
-## 本次升级内容
+### 3.1 ur5_motion_planner
 
-1. fake trajectory controller 增加执行速度参数 `fake_execution_speed_scale`，可以把 RViz 里的执行动作放慢，方便看清机械臂运动过程。
-2. `multi_target`、`cartesian_path`、`planning_scene` 增加 RViz MarkerArray 可视化，能看到目标点、路径提示线、障碍物标签、成功目标和预期失败目标。
-3. 所有规划节点除了写各自 CSV，还会追加写入 `results/trajectory_summary.csv`，用于横向对比不同规划方法的成功率、规划耗时、轨迹点数、关节空间路径长度、最大关节速度等指标。
-4. `planning_scene` 增加一个预期失败案例 `expected_unreachable_failure`，用于演示“为什么某些目标无法规划”，但 launch 的最终退出仍以主要避障规划是否成功为准。
+这是核心 C++ 规划包，负责启动和执行四类规划任务。
 
-## 环境依赖
+主要文件：
+
+- `move_group_demo_node.cpp`：单目标位姿规划。
+- `planning_scene_node.cpp`：障碍物场景、避障规划、预期失败案例。
+- `multi_target_planner_node.cpp`：多目标连续规划。
+- `cartesian_path_node.cpp`：笛卡尔路径规划。
+- `planner_utils.hpp`：共用工具，包括目标位姿、轨迹指标、CSV 写入、Marker 生成。
+- `fake_trajectory_controller.py`：虚拟 FollowJointTrajectory controller。
+- `launch/*.launch.py`：四个演示入口。
+
+### 3.2 ur5_analysis
+
+这是 Python 分析包，负责读取 CSV 并输出统计摘要或图表。
+
+主要文件：
+
+- `plot_trajectory.py`：读取 `trajectory_summary.csv` 或单项 CSV，打印统计并可生成 `planning_metrics.png`。
+- `fk_verify.py`：手写 UR5 正运动学验证脚本。
+
+## 4. 环境要求
+
+推荐系统：
+
+- Ubuntu 22.04
+- ROS 2 Humble
+- MoveIt 2
+- Python 3
+- colcon
+
+不建议直接在 Windows PowerShell 里运行 ROS 2 launch。Windows 可以用来查看和编辑代码，但真实构建、运行和 RViz 展示建议放在 Ubuntu 22.04 或 WSLg 图形环境中。
+
+## 5. 安装依赖
+
+先安装 ROS 2 Humble 后，再安装本项目需要的依赖：
 
 ```bash
 sudo apt update
@@ -30,49 +118,141 @@ sudo apt install -y \
   ros-humble-robot-state-publisher
 ```
 
-## 构建
-
-每次修改代码后都建议重新构建：
+可选安装绘图依赖：
 
 ```bash
-cd ~/moveit2_ur5_planning_project
+sudo apt install -y python3-matplotlib
+```
+
+检查 ROS 环境：
+
+```bash
+source /opt/ros/humble/setup.bash
+ros2 --version
+ros2 pkg list | grep moveit
+ros2 pkg list | grep ur_moveit_config
+```
+
+如果 `ur_moveit_config` 或 `ur_description` 查不到，说明依赖还没有安装完整。
+
+## 6. 克隆和构建
+
+从 GitHub 克隆：
+
+```bash
+git clone git@github.com:wwuguangwei123-jpg/UR5.git
+cd UR5/moveit2_ur5_planning_project
+```
+
+构建：
+
+```bash
 source /opt/ros/humble/setup.bash
 colcon build --symlink-install
 source install/setup.bash
 ```
 
-如果想重新做一次干净实验，可以先清空旧结果：
+构建成功后检查两个包是否可见：
+
+```bash
+ros2 pkg list | grep ur5_motion_planner
+ros2 pkg list | grep ur5_analysis
+```
+
+如果查不到，通常是忘了执行：
+
+```bash
+source install/setup.bash
+```
+
+## 7. 运行前建议清理结果
+
+如果你想做一次干净展示，可以先清空旧结果：
 
 ```bash
 rm -rf results
 mkdir -p results
 ```
 
-## RViz 通用检查方法
+运行后结果会自动写到：
 
-启动任意 launch 后，RViz 会打开 MoveIt 的 MotionPlanning 面板。建议先按下面顺序检查界面：
+```bash
+~/moveit2_ur5_planning_project/results
+```
 
-1. 看左侧 `Displays` 是否有 `RobotModel`、`MotionPlanning`、`PlanningScene`。
-2. 如果没有 Marker 显示，点击 `Displays` 面板左下角 `Add`。
-3. 选择 `By topic`。
-4. 找到 `/ur5_planning_markers`。
-5. 选择 `MarkerArray` 并点击 `OK`。
-6. 在 3D 视图里看彩色球、文字标签、线条或透明方块是否出现。
-7. 如果没有看到 marker，重新运行对应 launch，或者把 `marker_publish_seconds:=30.0` 加到命令后面，让 marker 多发布一会儿。
-8. 如果要看机械臂执行过程，把 launch 命令里的 `execute:=true` 打开，并把 `fake_execution_speed_scale` 调小，例如 `0.25`，动作会更慢、更适合展示。
+如果你是从 GitHub 克隆到 `~/UR5/moveit2_ur5_planning_project`，代码里的默认结果路径仍使用 `~/moveit2_ur5_planning_project/results`。为了路径完全一致，建议把项目放在：
 
-`fake_execution_speed_scale` 的含义：
+```bash
+~/moveit2_ur5_planning_project
+```
+
+或者把克隆后的项目移动到该路径：
+
+```bash
+mv ~/UR5/moveit2_ur5_planning_project ~/moveit2_ur5_planning_project
+cd ~/moveit2_ur5_planning_project
+```
+
+## 8. 常用 launch 参数
+
+四个 launch 基本都支持下面这些参数：
+
+| 参数 | 默认值 | 说明 |
+| --- | --- | --- |
+| `launch_rviz` | `true` | 是否启动 RViz |
+| `execute` | `false` | 是否执行规划轨迹 |
+| `fake_execution` | `true` | 是否启动项目内置 fake controller |
+| `use_joint_state_publisher` | `false` | 不使用 fake controller 时可打开 |
+| `planning_time` | `10.0` 或 `12.0` | MoveIt 单次规划允许时间 |
+| `planning_attempts` | `10` 或 `15` | 规划尝试次数 |
+| `velocity_scaling` | `0.2` | MoveIt 轨迹速度缩放 |
+| `acceleration_scaling` | `0.2` | MoveIt 加速度缩放 |
+| `fake_execution_speed_scale` | `0.5` | fake controller 执行速度缩放 |
+| `marker_publish_seconds` | `10.0` | marker 保持重复发布的时间 |
+| `auto_shutdown` | `false` | 节点结束后是否自动关闭 launch |
+
+`fake_execution_speed_scale` 的理解：
 
 - `1.0`：按轨迹原始时间执行。
-- `0.5`：半速执行，动作时间约变为 2 倍。
-- `0.25`：四分之一速度执行，适合课堂展示。
-- 不建议小于 `0.1`，否则一次执行会等很久。
+- `0.5`：半速执行，动作时间约变成 2 倍。
+- `0.25`：四分之一速度，适合展示。
+- `0.1`：非常慢，适合逐帧观察，但要等较久。
 
-## 四个 launch 功能和完整操作流程
+## 9. RViz 通用操作
 
-### 1. 单目标位姿规划 demo.launch.py
+启动任意 launch 后，RViz 会打开。建议每次都按下面步骤检查：
 
-功能：展示 MoveGroupInterface 如何从 Home 状态规划到一个固定末端位姿，并把结果写入 `move_group_demo.csv` 和 `trajectory_summary.csv`。
+1. 看左侧 `Displays` 面板。
+2. 确认有 `RobotModel`。
+3. 确认有 `MotionPlanning`。
+4. 确认有 `PlanningScene`。
+5. 如果没有 marker，点击左下角 `Add`。
+6. 在弹窗里选择 `By topic`。
+7. 找到 `/ur5_planning_markers`。
+8. 选择 `MarkerArray`。
+9. 点击 `OK`。
+10. 看 3D 视图里是否出现彩色球、文字、线条或透明方块。
+
+如果 marker 没看到：
+
+```bash
+ros2 launch ur5_motion_planner planning_scene.launch.py \
+  launch_rviz:=true marker_publish_seconds:=30.0
+```
+
+如果 RViz Fixed Frame 报错：
+
+1. 在左侧 `Global Options` 找到 `Fixed Frame`。
+2. 尝试选择 `base_link`。
+3. 如果没有 `base_link`，看终端 TF 或 robot_description 是否报错。
+
+## 10. 四个 launch 详细流程
+
+### 10.1 单目标位姿规划 demo.launch.py
+
+功能：
+
+从 Home 状态出发，规划到一个固定末端目标位姿，展示最基础的 MoveIt 目标位姿规划。
 
 启动：
 
@@ -83,16 +263,33 @@ source install/setup.bash
 ros2 launch ur5_motion_planner demo.launch.py launch_rviz:=true execute:=false
 ```
 
-自己操作一遍：
+你应该做什么：
 
-1. 等 RViz 打开，左侧确认 `RobotModel` 能显示 UR5。
-2. 等约 20 秒，`move_group_demo_node` 会自动开始规划。
-3. 看终端日志是否出现 `demo plan success=true`。
-4. 看 RViz 中是否出现规划轨迹，通常是一条从当前机械臂姿态到目标位姿的轨迹预览。
-5. 打开 `results/move_group_demo.csv`，确认有 `single_target_pose` 一行。
-6. 打开 `results/trajectory_summary.csv`，确认有 `planner_method=move_group_pose_goal` 的记录。
+1. 等 RViz 打开。
+2. 在 RViz 左侧确认 UR5 模型显示正常。
+3. 等约 20 秒，`move_group_demo_node` 会自动开始规划。
+4. 看终端输出是否有：
 
-如果想看机械臂慢速执行：
+   ```text
+   demo plan success=true
+   ```
+
+5. 看 RViz 里是否出现规划轨迹。
+6. 打开结果文件：
+
+   ```bash
+   cat results/move_group_demo.csv
+   cat results/trajectory_summary.csv
+   ```
+
+7. 确认 `trajectory_summary.csv` 中有：
+
+   ```text
+   single_target_pose
+   move_group_pose_goal
+   ```
+
+想看执行过程：
 
 ```bash
 ros2 launch ur5_motion_planner demo.launch.py \
@@ -102,12 +299,19 @@ ros2 launch ur5_motion_planner demo.launch.py \
 完成标准：
 
 - 终端出现 `success=true`。
-- RViz 能看到机械臂规划或执行。
-- `trajectory_summary.csv` 出现 `single_target_pose`。
+- RViz 能看到轨迹或机械臂执行。
+- `results/move_group_demo.csv` 有记录。
+- `results/trajectory_summary.csv` 有 `single_target_pose`。
 
-### 2. 障碍物避障 planning_scene.launch.py
+工程解释：
 
-功能：向规划场景中加入桌面、偏置箱体、后墙障碍物，规划一条绕障轨迹，并额外记录一个不可达目标的预期失败案例。
+这个 launch 说明项目已经打通“目标位姿输入 -> MoveIt 规划 -> 轨迹输出 -> 可选执行”的基础链路。
+
+### 10.2 障碍物避障 planning_scene.launch.py
+
+功能：
+
+在规划场景中加入桌面、偏置箱体和后墙，规划一条绕障路径，并额外加入一个故意不可达的目标，形成成功和失败案例对比。
 
 启动：
 
@@ -115,20 +319,37 @@ ros2 launch ur5_motion_planner demo.launch.py \
 ros2 launch ur5_motion_planner planning_scene.launch.py launch_rviz:=true execute:=false
 ```
 
-自己操作一遍：
+你应该做什么：
 
-1. RViz 打开后，确认左侧有 `PlanningScene` 显示。
-2. 如果还没有 marker，按“RViz 通用检查方法”添加 `/ur5_planning_markers` 的 `MarkerArray`。
-3. 看 3D 视图里是否出现透明桌面、红色 `offset_box`、蓝色 `back_wall`。
-4. 看绿色 `success_target`，这是避障规划要到达的目标。
-5. 看远处红色 `expected_failure_target`，这是故意放在 UR5 工作空间外的失败目标。
-6. 看终端是否出现 `added 3 collision objects`。
-7. 看终端是否出现 `obstacle plan success=true`。
-8. 看终端是否出现 `expected failure demo success=false`。如果这里是 `false`，说明失败案例演示成功：目标不可达，所以规划器无法给出有效轨迹。
-9. 打开 `results/planning_scene.csv`，会看到 `obstacle_avoidance` 和 `expected_unreachable_failure` 两行。
-10. 打开 `results/trajectory_summary.csv`，对比两行的 `success`、`trajectory_points`、`joint_space_length`。失败案例通常点数为 0 或明显不同。
+1. RViz 打开后，添加 `/ur5_planning_markers` 的 `MarkerArray`。
+2. 在 3D 视图中寻找透明灰色桌面。
+3. 寻找红色 `offset_box`。
+4. 寻找蓝色 `back_wall`。
+5. 寻找绿色 `success_target`。
+6. 寻找远处红色 `expected_failure_target`。
+7. 看终端是否有：
 
-如果想看避障执行：
+   ```text
+   added 3 collision objects
+   obstacle plan success=true
+   expected failure demo success=false
+   ```
+
+8. 打开结果：
+
+   ```bash
+   cat results/planning_scene.csv
+   cat results/trajectory_summary.csv
+   ```
+
+9. 确认有两类场景：
+
+   ```text
+   obstacle_avoidance
+   expected_unreachable_failure
+   ```
+
+想看执行：
 
 ```bash
 ros2 launch ur5_motion_planner planning_scene.launch.py \
@@ -137,14 +358,26 @@ ros2 launch ur5_motion_planner planning_scene.launch.py \
 
 完成标准：
 
-- 障碍物在 RViz 中可见。
+- RViz 中能看到障碍物。
 - `obstacle_avoidance` 成功。
-- `expected_unreachable_failure` 记录为失败。
-- 总表能同时展示成功和失败案例。
+- `expected_unreachable_failure` 失败。
+- CSV 同时记录成功和失败。
 
-### 3. 多目标连续任务 multi_target.launch.py
+工程解释：
 
-功能：连续规划 `target_a -> target_b -> target_c -> return_home_region`，展示多目标任务的连续性和中间成功率。
+真实机械臂不是在空中随便动，而是在有桌面、物体、墙面、夹具等约束的环境中运动。这个 launch 说明规划器需要避开障碍物；如果目标超出工作空间，失败是合理结果，不是程序崩溃。
+
+### 10.3 多目标连续规划 multi_target.launch.py
+
+功能：
+
+连续规划多个目标点，展示机械臂完成一组任务点的能力。
+
+目标顺序：
+
+```text
+target_a -> target_b -> target_c -> return_home_region
+```
 
 启动：
 
@@ -152,17 +385,31 @@ ros2 launch ur5_motion_planner planning_scene.launch.py \
 ros2 launch ur5_motion_planner multi_target.launch.py launch_rviz:=true execute:=false
 ```
 
-自己操作一遍：
+你应该做什么：
 
-1. RViz 打开后，添加 `/ur5_planning_markers` 的 `MarkerArray`。
-2. 看 3D 视图中的 `target_a`、`target_b`、`target_c`、`return_home_region` 彩色球。
-3. 看黄色线条，它表示多目标任务的目标访问顺序。
-4. 看终端依次输出每个目标的规划结果，例如 `target_a success=true`。
-5. 看最后一行 `multi-target success ratio`，理想情况是 `4/4 = 1.00`。
-6. 打开 `results/multi_target.csv`，确认有四个目标的记录。
-7. 打开 `results/trajectory_summary.csv`，用 `planner_method=move_group_pose_goal_sequence` 找到这些记录。
+1. RViz 打开后添加 `/ur5_planning_markers` 的 `MarkerArray`。
+2. 看 3D 视图中的 `target_a`、`target_b`、`target_c`、`return_home_region`。
+3. 看黄色线条，它表示目标访问顺序。
+4. 看终端逐个输出：
 
-如果想看连续执行：
+   ```text
+   target_a success=...
+   target_b success=...
+   target_c success=...
+   return_home_region success=...
+   multi-target success ratio
+   ```
+
+5. 打开结果：
+
+   ```bash
+   cat results/multi_target.csv
+   cat results/trajectory_summary.csv
+   ```
+
+6. 确认有四条目标记录。
+
+想看连续执行：
 
 ```bash
 ros2 launch ur5_motion_planner multi_target.launch.py \
@@ -171,13 +418,20 @@ ros2 launch ur5_motion_planner multi_target.launch.py \
 
 完成标准：
 
-- RViz 里能看到目标点和访问顺序线。
-- 终端能看到每个目标的成功/失败和最终成功率。
-- CSV 中每个目标都有一行，能对比每段轨迹耗时、长度和点数。
+- RViz 能看到目标点和访问顺序线。
+- 终端能看到每个目标的成功/失败。
+- 最终成功率理想情况为 `4/4 = 1.00`。
+- CSV 能对比每段轨迹的耗时、点数和路径长度。
 
-### 4. 笛卡尔路径 cartesian_path.launch.py
+工程解释：
 
-功能：调用 `computeCartesianPath`，从 Home 状态的末端位姿出发，沿末端直线方向生成笛卡尔路径。它和普通 MoveGroup 位姿规划不同，更适合演示末端轨迹约束。
+工业场景里机械臂通常不是只到一个点，而是要连续完成取放、检测、避让、回位等任务。这个 launch 把单目标规划扩展成任务序列。
+
+### 10.4 笛卡尔路径 cartesian_path.launch.py
+
+功能：
+
+使用 `computeCartesianPath` 生成末端沿直线方向移动的笛卡尔路径。
 
 启动：
 
@@ -185,17 +439,35 @@ ros2 launch ur5_motion_planner multi_target.launch.py \
 ros2 launch ur5_motion_planner cartesian_path.launch.py launch_rviz:=true execute:=false
 ```
 
-自己操作一遍：
+你应该做什么：
 
-1. RViz 打开后，添加 `/ur5_planning_markers` 的 `MarkerArray`。
-2. 看蓝色 `cartesian_start` 和红色 `cartesian_end`。
-3. 看黄色短线，它表示期望的末端笛卡尔路径方向。
-4. 看终端里的 `cartesian path fraction=...`。
-5. 如果 `fraction >= 0.85`，本项目判定为成功。
-6. 打开 `results/cartesian_path.csv`，确认 `cartesian_fraction` 列。
-7. 打开 `results/trajectory_summary.csv`，确认 `planner_method=cartesian_compute_path`。
+1. RViz 打开后添加 `/ur5_planning_markers` 的 `MarkerArray`。
+2. 看蓝色 `cartesian_start`。
+3. 看红色 `cartesian_end`。
+4. 看黄色短线，它表示末端期望移动方向。
+5. 看终端输出：
 
-如果想看执行：
+   ```text
+   cartesian path fraction=...
+   ```
+
+6. 如果 `fraction >= 0.85`，项目认为这次笛卡尔路径规划成功。
+7. 打开结果：
+
+   ```bash
+   cat results/cartesian_path.csv
+   cat results/trajectory_summary.csv
+   ```
+
+8. 确认有：
+
+   ```text
+   cartesian_rectangle_segment
+   cartesian_compute_path
+   cartesian_fraction
+   ```
+
+想看执行：
 
 ```bash
 ros2 launch ur5_motion_planner cartesian_path.launch.py \
@@ -204,57 +476,98 @@ ros2 launch ur5_motion_planner cartesian_path.launch.py \
 
 完成标准：
 
+- RViz 能看到起点、终点和路径提示线。
 - `fraction` 达到或超过 `0.85`。
-- RViz 中能看到起点、终点和路径提示线。
-- CSV 中有 `cartesian_rectangle_segment` 的记录。
+- CSV 中有笛卡尔路径记录。
 
-## 在 RViz 里手动拖动目标并执行
+工程解释：
 
-这个步骤适合展示“MoveIt 本身可以交互式规划”，和代码节点的自动规划形成对比。
+普通 MoveGroup 位姿规划更关注“能到终点”，笛卡尔路径更关注“末端按指定空间路径走”。这对焊接、喷涂、擦拭、打磨、直线插入等任务更有工程意义。
 
-1. 启动任意带 RViz 的 launch，例如：
+## 11. RViz 手动拖动目标
 
-   ```bash
-   ros2 launch ur5_motion_planner demo.launch.py launch_rviz:=true execute:=false
-   ```
+这个步骤用于展示 MoveIt 的交互式规划能力。
 
-2. 在 RViz 左侧 `MotionPlanning` 面板中找到 `Planning` 标签页。
-3. 选择 planning group，一般应为 `ur_manipulator`。
-4. 在 3D 视图里找到末端执行器附近的交互式标记。
-5. 用鼠标拖动彩色箭头改变末端位置。
-6. 用鼠标拖动彩色圆环改变末端姿态。
-7. 点击 MotionPlanning 面板中的 `Plan`，观察是否出现轨迹。
-8. 如果启动时用了 `execute:=true` 或 fake controller 正常运行，可以点击 `Plan & Execute`。
-9. 若机械臂运动太快，重新启动 launch 并加入：
-
-   ```bash
-   fake_execution_speed_scale:=0.25
-   ```
-
-注意：手动拖动产生的交互式规划主要用于 RViz 展示，不一定会写入本项目 CSV。CSV 统计主要来自四个 C++ 规划节点。
-
-## 规划结果汇总表
-
-每次运行规划节点后，结果会写入：
+启动：
 
 ```bash
-~/moveit2_ur5_planning_project/results/trajectory_summary.csv
+ros2 launch ur5_motion_planner demo.launch.py launch_rviz:=true execute:=false
 ```
 
-重要字段含义：
+操作：
 
-- `source_file`：来自哪个单项 CSV。
-- `planner_method`：规划方法，例如普通位姿规划、多目标序列、带障碍物位姿规划、笛卡尔路径。
-- `scenario`：具体案例名。
-- `success`：`1` 表示成功，`0` 表示失败。
-- `planning_time_ms`：规划耗时，单位毫秒。
-- `trajectory_duration_sec`：轨迹执行时间，来自轨迹时间戳。
-- `trajectory_points`：轨迹点数量。
-- `joint_space_length`：关节空间路径长度，越大代表关节总运动量越大。
-- `max_joint_speed`：轨迹点中记录到的最大关节速度。
-- `metric_name` / `metric_value`：额外指标，例如笛卡尔完成比例、碰撞物数量、运行中成功率。
+1. 在 RViz 左侧找到 `MotionPlanning` 面板。
+2. 找到 `Planning` 标签页。
+3. 确认 Planning Group 是 `ur_manipulator`。
+4. 在 3D 视图中找到末端执行器附近的交互式标记。
+5. 拖动彩色箭头改变末端位置。
+6. 拖动彩色圆环改变末端姿态。
+7. 点击 `Plan`。
+8. 如果看到轨迹，说明交互式规划成功。
+9. 如果启动了 fake controller，可以点击 `Plan & Execute`。
 
-用脚本打印汇总：
+注意：
+
+手动拖动产生的规划是 RViz MotionPlanning 插件里的交互式规划，不一定写入本项目 CSV。本项目 CSV 主要记录四个 C++ 自动规划节点的结果。
+
+## 12. 结果文件说明
+
+运行后 `results/` 中可能出现：
+
+```text
+move_group_demo.csv
+planning_scene.csv
+multi_target.csv
+cartesian_path.csv
+trajectory_summary.csv
+planning_metrics.png
+warehouse_ros.sqlite
+```
+
+各文件含义：
+
+| 文件 | 含义 |
+| --- | --- |
+| `move_group_demo.csv` | 单目标位姿规划结果 |
+| `planning_scene.csv` | 避障规划和失败案例结果 |
+| `multi_target.csv` | 多目标连续规划结果 |
+| `cartesian_path.csv` | 笛卡尔路径规划结果 |
+| `trajectory_summary.csv` | 所有规划方法统一汇总表 |
+| `planning_metrics.png` | 分析脚本生成的对比图 |
+| `warehouse_ros.sqlite` | MoveIt warehouse 数据库 |
+
+## 13. trajectory_summary.csv 字段解释
+
+统一汇总表字段：
+
+| 字段 | 含义 |
+| --- | --- |
+| `timestamp` | 记录时间 |
+| `source_file` | 来源 CSV |
+| `planner_method` | 规划方法 |
+| `scenario` | 具体案例 |
+| `success` | `1` 成功，`0` 失败 |
+| `planning_time_ms` | 规划耗时，单位毫秒 |
+| `trajectory_duration_sec` | 轨迹执行时间 |
+| `trajectory_points` | 轨迹点数量 |
+| `joint_space_length` | 关节空间路径长度 |
+| `max_joint_speed` | 最大关节速度 |
+| `metric_name` | 附加指标名称 |
+| `metric_value` | 附加指标数值 |
+
+常见 `planner_method`：
+
+| 方法 | 含义 |
+| --- | --- |
+| `move_group_pose_goal` | 普通目标位姿规划 |
+| `move_group_pose_goal_sequence` | 多目标连续位姿规划 |
+| `move_group_pose_goal_with_collision_scene` | 带障碍物的位姿规划 |
+| `move_group_pose_goal_unreachable_demo` | 不可达目标失败演示 |
+| `cartesian_compute_path` | 笛卡尔路径规划 |
+
+## 14. 如何分析结果
+
+打印摘要：
 
 ```bash
 source ~/moveit2_ur5_planning_project/install/setup.bash
@@ -269,51 +582,147 @@ ros2 run ur5_analysis plot_trajectory.py \
   --plot
 ```
 
-图表会保存为：
+看表时可以这样解释：
+
+- `success=1`：规划器找到了满足约束的轨迹。
+- `success=0`：目标不可达、碰撞约束无法满足、姿态不合适或规划时间内未找到解。
+- `planning_time_ms` 越小：规划越快，但不一定轨迹越好。
+- `trajectory_points` 越多：轨迹离散点更多，执行更细，但不一定更优。
+- `joint_space_length` 越大：关节总运动量越大，可能意味着绕路或目标距离更远。
+- `cartesian_fraction` 越接近 `1.0`：笛卡尔路径完成比例越高。
+
+## 15. 推荐完整展示脚本
+
+如果你要给老师、同学或项目评审展示，建议按这个顺序：
+
+1. 先打开项目结构，说明这是 ROS 2 工作空间。
+2. 展示 `src/ur5_motion_planner` 和 `src/ur5_analysis` 两个包。
+3. 运行 `demo.launch.py`，说明基础规划链路。
+4. 打开 RViz，看 UR5 模型和规划轨迹。
+5. 用 `execute:=true fake_execution_speed_scale:=0.25` 再跑一次，说明 fake controller 执行。
+6. 运行 `multi_target.launch.py`，看多个目标点和顺序线。
+7. 运行 `cartesian_path.launch.py`，解释笛卡尔路径和普通位姿规划的区别。
+8. 运行 `planning_scene.launch.py`，看障碍物、成功目标、失败目标。
+9. 打开 `trajectory_summary.csv`，用数据横向比较。
+10. 运行 `plot_trajectory.py --plot`，展示图表。
+
+## 16. 一键跑四个 launch 的建议
+
+如果只想生成 CSV，可以不打开 RViz，并自动结束：
 
 ```bash
-~/moveit2_ur5_planning_project/results/planning_metrics.png
+ros2 launch ur5_motion_planner demo.launch.py \
+  launch_rviz:=false auto_shutdown:=true execute:=false
+
+ros2 launch ur5_motion_planner multi_target.launch.py \
+  launch_rviz:=false auto_shutdown:=true execute:=false
+
+ros2 launch ur5_motion_planner cartesian_path.launch.py \
+  launch_rviz:=false auto_shutdown:=true execute:=false
+
+ros2 launch ur5_motion_planner planning_scene.launch.py \
+  launch_rviz:=false auto_shutdown:=true execute:=false
 ```
 
-## 建议的完整演示顺序
+然后查看汇总：
 
-建议按下面顺序完整跑一遍，这样观众能逐步看出工程意义：
+```bash
+ros2 run ur5_analysis plot_trajectory.py --results ~/moveit2_ur5_planning_project/results
+```
 
-1. 跑 `demo.launch.py`，说明“机械臂能从起点规划到目标位姿”。
-2. 跑 `multi_target.launch.py`，说明“单次规划可以扩展为连续任务”。
-3. 跑 `cartesian_path.launch.py`，说明“不是所有规划都只是找一个终点，也可以约束末端沿直线路径运动”。
-4. 跑 `planning_scene.launch.py`，说明“真实工程环境有桌面、箱体、墙等障碍物，规划必须考虑碰撞”。
-5. 打开 `trajectory_summary.csv`，比较不同方法的成功率、耗时、轨迹点数和路径长度。
-6. 指出 `expected_unreachable_failure`，说明失败不是 bug，而是工作空间、碰撞约束、目标姿态共同作用下的合理结果。
-7. 用 `execute:=true fake_execution_speed_scale:=0.25` 再跑一次最直观的案例，让观众看到机械臂真的按轨迹运动。
+## 17. 常见问题排查
 
-## 常见问题
+### 17.1 colcon 找不到
 
-如果 RViz 里没有机械臂：
+现象：
 
-- 确认 `source /opt/ros/humble/setup.bash` 和 `source install/setup.bash` 都执行过。
-- 确认 `ur_description` 和 `ur_moveit_config` 已安装。
-- 看终端是否有 xacro 或 robot_description 报错。
+```text
+colcon: command not found
+```
 
-如果 Marker 看不到：
+处理：
 
-- 确认添加的是 `/ur5_planning_markers` 下的 `MarkerArray`。
-- 重新运行 launch，并加入 `marker_publish_seconds:=30.0`。
-- 确认 RViz 的 Fixed Frame 和 MoveIt planning frame 一致，通常是 `base_link` 或 MoveIt 自动配置的基坐标系。
+```bash
+sudo apt install -y python3-colcon-common-extensions
+```
 
-如果执行时机械臂不动：
+### 17.2 ros2 找不到包
 
-- 确认命令里有 `execute:=true`。
-- 确认 `fake_execution:=true`。
-- 看终端是否显示 fake controller 已启动。
-- 把 `fake_execution_speed_scale` 设为 `0.25`，运动会更慢但更容易观察。
+现象：
 
-如果 CSV 没有生成：
+```text
+Package 'ur5_motion_planner' not found
+```
 
-- 确认对应规划节点已经真正运行。
-- 看终端是否有 `success=`、`points=`、`joint_length=` 日志。
-- 确认当前用户对项目目录有写权限。
+处理：
 
-## 简历描述
+```bash
+cd ~/moveit2_ur5_planning_project
+source /opt/ros/humble/setup.bash
+colcon build --symlink-install
+source install/setup.bash
+```
+
+### 17.3 RViz 没有机器人
+
+检查：
+
+1. `ur_description` 是否安装。
+2. `ur_moveit_config` 是否安装。
+3. 终端是否有 xacro 报错。
+4. RViz Fixed Frame 是否正确。
+
+### 17.4 Marker 看不到
+
+处理：
+
+1. RViz 左侧点击 `Add`。
+2. 选择 `By topic`。
+3. 添加 `/ur5_planning_markers` 的 `MarkerArray`。
+4. 重新运行 launch，加长发布时间：
+
+   ```bash
+   marker_publish_seconds:=30.0
+   ```
+
+### 17.5 机械臂执行太快
+
+处理：
+
+```bash
+fake_execution_speed_scale:=0.25
+```
+
+### 17.6 机械臂不执行
+
+检查：
+
+1. launch 命令是否有 `execute:=true`。
+2. 是否启动了 `fake_execution:=true`。
+3. 终端是否出现 fake controller ready 日志。
+4. RViz 是否接收到 `/joint_states`。
+
+### 17.7 CSV 没有生成
+
+检查：
+
+1. 规划节点是否真的启动。
+2. 终端是否有 `success=`、`points=`、`joint_length=`。
+3. 当前用户是否有项目目录写权限。
+4. `results/` 是否被误删后没有重新创建。
+
+## 18. 可以如何继续扩展
+
+后续可以继续升级：
+
+- 增加更多规划器对比，例如 RRTConnect、PRM、EST。
+- 增加路径平滑前后对比。
+- 增加碰撞距离或最小安全距离统计。
+- 增加真实 UR ros2_control 控制器接入。
+- 增加 MoveIt Servo 实时控制。
+- 增加更多典型工业场景，例如抓取、放置、绕障搬运。
+- 把 CSV 自动生成 Markdown 或 HTML 报告。
+
+## 19. 简历描述
 
 基于 ROS 2 Humble 和 MoveIt 2 搭建 UR5 六自由度机械臂运动规划仿真系统，完成 UR5 模型加载、MoveIt 2 规划环境启动、C++ MoveGroupInterface 控制节点开发，实现目标位姿规划、障碍物避障、多目标连续任务和笛卡尔路径规划；进一步加入 RViz MarkerArray 可视化、fake controller 慢速执行参数、成功/失败案例展示以及 `trajectory_summary.csv` 统一指标汇总，用于对比不同规划方法的规划耗时、成功率、轨迹点数、关节空间路径长度和最大关节速度。
