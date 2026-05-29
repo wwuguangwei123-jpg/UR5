@@ -1,0 +1,44 @@
+# ROS 2 / colcon build outputs
+build/
+install/
+log/
+
+# Runtime experiment outputs
+results/
+**/results/
+*.sqlite
+*.db
+
+# Python cache and virtual environments
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# CMake and compiler outputs
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+*.o
+*.so
+*.dll
+*.exe
+
+# Editor and OS metadata
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ROS logs and bags
+*.bag
+*.db3
+*.mcap
+
+# Local interview preparation notes, not part of the public project
+UR5_MoveIt2_面试项目介绍与拷打问答.docx
+build_ur5_interview_doc.py
