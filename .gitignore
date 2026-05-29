@@ -33,6 +33,9 @@ cmake_install.cmake
 *.swo
 .DS_Store
 Thumbs.db
+~$*.docx
+~$*.xlsx
+~$*.pptx
 
 # ROS logs and bags
 *.bag
